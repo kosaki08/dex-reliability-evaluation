@@ -19,6 +19,15 @@ RUN pip install --no-cache-dir \
   graphviz==0.20.3 \
   pyarrow==16.1.0
 
+# MLflow からモデルをインポート
+ARG MLFLOW_TRACKING_URI
+ARG MLFLOW_TOKEN
+ENV MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
+ENV MLFLOW_TOKEN=${MLFLOW_TOKEN}
+
+# idempotent にインポート（存在すればスキップ）
+RUN python scripts/import_volume_spike_model.py || true
+
 # ---------- 2. runtime stage ----------
 FROM --platform=linux/amd64 python:3.11-slim
 RUN apt-get update && \

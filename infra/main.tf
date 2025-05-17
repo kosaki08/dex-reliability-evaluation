@@ -46,6 +46,9 @@ module "secrets" {
     # Streamlit SA へ snowflake-pass / snowflake-user の accessor を付与
     "snowflake-pass" = [module.service_accounts.emails["streamlit"]]
     "snowflake-user" = [module.service_accounts.emails["streamlit"]]
+
+    # Bento SA へ mlflow-token の accessor を付与
+    "mlflow-token" = [module.service_accounts.emails["bento"]]
   }
 }
 
@@ -62,13 +65,15 @@ module "artifact_registry" {
 
 # BentoML API
 module "cloud_run_bento" {
-  source         = "./modules/cloud_run"
-  project_id     = local.project_id
-  name           = "bento-api-${local.env}"
-  location       = local.region
-  image          = "asia-northeast1-docker.pkg.dev/${local.project_id}/portfolio-docker-${local.env}/bento:latest"
-  vpc_connector  = module.network.connector_id
-  container_port = 3000
+  source                = "./modules/cloud_run"
+  project_id            = local.project_id
+  name                  = "bento-api-${local.env}"
+  location              = local.region
+  image                 = "asia-northeast1-docker.pkg.dev/${local.project_id}/portfolio-docker-${local.env}/bento:latest"
+  vpc_connector         = module.network.connector_id
+  container_port        = 3000
+  service_account_email = module.service_accounts.emails["bento"]
+
 
   depends_on = [
     module.artifact_registry,
@@ -76,7 +81,14 @@ module "cloud_run_bento" {
   ]
 
   env_vars = {
-    MLFLOW_TRACKING_URI = "http://mlflow:5000"
+    MLFLOW_TRACKING_URI = "https://mlflow-${local.env}-${local.region}.run.app"
+  }
+
+  secret_env_vars = {
+    MLFLOW_TOKEN = {
+      secret  = "mlflow-token"
+      version = "latest"
+    }
   }
 }
 

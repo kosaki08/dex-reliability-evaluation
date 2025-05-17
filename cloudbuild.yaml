@@ -3,19 +3,32 @@ substitutions:
   _PROJECT_ID: "portfolio-dex-dev"
   _REPO: "portfolio-docker-dev" # _PROJECT_ID に依存しない文字列
   _IMAGE_TAG: "local" # Pull Request ビルドなど
+  _MLFLOW_TRACKING_URI: "https://mlflow-dev-asia-northeast1.run.app"
+
+# Secret Manager から取り出すシークレット定義
+availableSecrets:
+  secretManager:
+    - versionName: "projects/${PROJECT_NUMBER}/secrets/mlflow-token/versions/latest"
+      env: MLFLOW_TOKEN
 
 steps:
   # Bento
   - id: "Build & Push Bento"
     name: "gcr.io/cloud-builders/docker"
-    args:
-      [
+    secretEnv: ["MLFLOW_TOKEN"]
+    env:
+      - "MLFLOW_TRACKING_URI=${_MLFLOW_TRACKING_URI}"
+    args: [
         "buildx",
         "build",
         "--platform=linux/amd64",
         "-t",
         "asia-northeast1-docker.pkg.dev/${_PROJECT_ID}/${_REPO}/bento:${_IMAGE_TAG}",
         "--push",
+        "--build-arg",
+        "MLFLOW_TRACKING_URI=${_MLFLOW_TRACKING_URI}",
+        "--build-arg",
+        "MLFLOW_TOKEN=$$MLFLOW_TOKEN", # シークレットから取得
         "-f",
         "docker/bento/Dockerfile",
         ".",
